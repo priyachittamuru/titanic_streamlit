@@ -17,7 +17,13 @@ st.set_page_config(
 def load_model():
     try:
         with open('logistic_regression_model.pkl', 'rb') as f:
-            return pickle.load(f)
+            model = pickle.load(f)
+            
+            # Debug: Print expected feature names if available
+            if hasattr(model, 'feature_names_in_'):
+                st.write("Model expects these features:", model.feature_names_in_)
+                
+            return model
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
         return None
@@ -79,16 +85,16 @@ if model is not None:
             with middle:
                 sibsp = st.number_input("Siblings/Spouses Aboard", 0, 10, 0)
                 parch = st.number_input("Parents/Children Aboard", 0, 10, 0)
-                fare = st.number_input("fare", 0.0, 600.0, 32.0, step=1.0, help="Ticket fare in British pounds")
+                fare = st.number_input("Fare (£)", 0.0, 600.0, 32.0, step=1.0, help="Ticket fare in British pounds")
                 
             with right:
-                embarked = st.selectbox("Embarked_", ["C", "Q", "S"], index=2)
+                embarked = st.selectbox("Embarkation Port", ["C", "Q", "S"], index=2)
                 cabin = st.text_input("Cabin Number (if known)", help="Leave blank if unknown")
             
             submitted = st.form_submit_button("Predict Survival")
             
         if submitted:
-            # Prepare features EXACTLY as the model expects
+            # Prepare ALL features EXACTLY as the model expects
             features = {
                 'Pclass': pclass,
                 'Sex': 1 if sex == "male" else 0,
@@ -96,26 +102,30 @@ if model is not None:
                 'FamilySize': sibsp + parch,
                 'HasCabin': 1 if cabin else 0,
                 'IsAlone': 1 if (sibsp + parch) == 0 else 0,
-                'AgeBin': 0,  # These would need proper binning logic
-                'FareBin': 0,  # in a real implementation
+                'AgeBin': 0,  # Placeholder - adjust binning logic as needed
+                'FareBin': 0,  # Placeholder - adjust binning logic as needed
                 'Embarked_C': 1 if embarked == "C" else 0,
                 'Embarked_Q': 1 if embarked == "Q" else 0,
                 'Embarked_S': 1 if embarked == "S" else 0,
-                'Title_Master': 0,
+                'Title_Master': 1 if sex == "male" and age < 18 else 0,
                 'Title_Miss': 1 if sex == "female" and age < 18 else 0,
-                'Title_Mr': 1 if sex == "male" else 0,
+                'Title_Mr': 1 if sex == "male" and age >= 18 else 0,
                 'Title_Mrs': 1 if sex == "female" and age >= 18 else 0,
                 'Title_Rare': 0,
-                'Fare': fare  # Added Fare as required by the model
+                'Fare': fare,
+                'Embarked_': 0  # Added this feature which was causing the error
             }
             
             # Create DataFrame with columns in the EXACT order the model expects
             expected_columns = [
-                'Pclass', 'Sex', 'Age', 'FamilySize', 'HasCabin', 'IsAlone', 
+                'Pclass', 'Sex', 'Age', 'FamilySize', 'HasCabin', 'IsAlone',
                 'AgeBin', 'FareBin', 'Embarked_C', 'Embarked_Q', 'Embarked_S',
                 'Title_Master', 'Title_Miss', 'Title_Mr', 'Title_Mrs', 'Title_Rare',
-                'Fare'
+                'Fare', 'Embarked_'  # Now includes all required features
             ]
+            
+            # Debug: Show the features we're sending
+            st.write("Features being sent to model:", features)
             
             df = pd.DataFrame([features])[expected_columns]
             
@@ -132,9 +142,12 @@ if model is not None:
                     proba = model.predict_proba(df)[0][1]
                     st.metric("Survival Probability", f"{proba:.1%}")
                 except:
-                    pass
+                    st.warning("Could not calculate probability scores")
             except Exception as e:
                 st.error(f"Prediction failed: {str(e)}")
+                # Debug: Show the exact data being sent
+                st.write("Data sent to model:", df)
+                st.write("Data types:", df.dtypes)
 
 # Footer
 st.markdown("---")
