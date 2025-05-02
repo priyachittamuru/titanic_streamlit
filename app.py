@@ -18,11 +18,6 @@ def load_model():
     try:
         with open('logistic_regression_model.pkl', 'rb') as f:
             model = pickle.load(f)
-            
-            # Debug: Print expected feature names if available
-            if hasattr(model, 'feature_names_in_'):
-                st.write("Model expects these features:", model.feature_names_in_)
-                
             return model
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
@@ -94,39 +89,42 @@ if model is not None:
             submitted = st.form_submit_button("Predict Survival")
             
         if submitted:
-            # Prepare ALL features EXACTLY as the model expects
+            # Prepare features to match exactly what the model expects
             features = {
                 'Pclass': pclass,
                 'Sex': 1 if sex == "male" else 0,
                 'Age': age,
                 'FamilySize': sibsp + parch,
-                'HasCabin': 1 if cabin else 0,
+                'HasCalshn': 1 if cabin else 0,  # Fixed typo to match model
                 'IsAlone': 1 if (sibsp + parch) == 0 else 0,
-                'AgeBin': 0,  # Placeholder - adjust binning logic as needed
-                'FareBin': 0,  # Placeholder - adjust binning logic as needed
+                'AgeBin': 0,  # You'll need to implement proper binning logic
+                'FareBin': 0,  # You'll need to implement proper binning logic
+                'Embarked_': 1 if embarked == "S" else 0,  # Main embarked feature
                 'Embarked_C': 1 if embarked == "C" else 0,
                 'Embarked_Q': 1 if embarked == "Q" else 0,
-                'Embarked_S': 1 if embarked == "S" else 0,
-                'Title_Master': 1 if sex == "male" and age < 18 else 0,
-                'Title_Miss': 1 if sex == "female" and age < 18 else 0,
-                'Title_Mr': 1 if sex == "male" and age >= 18 else 0,
-                'Title_Mrs': 1 if sex == "female" and age >= 18 else 0,
-                'Title_Rare': 0,
-                'Fare': fare,
-                'Embarked_': 0  # Added this feature which was causing the error
+                'value': 0  # Added this required feature
             }
+            
+            # Remove features not expected by the model
+            features.pop('Fare', None)  # Remove Fare since model expects FareBin
             
             # Create DataFrame with columns in the EXACT order the model expects
             expected_columns = [
-                'Pclass', 'Sex', 'Age', 'FamilySize', 'HasCabin', 'IsAlone',
-                'AgeBin', 'FareBin', 'Embarked_C', 'Embarked_Q', 'Embarked_S',
-                'Title_Master', 'Title_Miss', 'Title_Mr', 'Title_Mrs', 'Title_Rare',
-                'Fare', 'Embarked_'  # Now includes all required features
+                'value',
+                'Pclass',
+                'Sex',
+                'Age',
+                'FamilySize',
+                'HasCalshn',  # Corrected from HasCabin
+                'IsAlone',
+                'AgeBin',
+                'FareBin',  # Using FareBin instead of Fare
+                'Embarked_',  # Main embarked feature
+                'Embarked_C',
+                'Embarked_Q'
             ]
             
-            # Debug: Show the features we're sending
-            st.write("Features being sent to model:", features)
-            
+            # Create DataFrame ensuring correct feature order
             df = pd.DataFrame([features])[expected_columns]
             
             try:
@@ -145,7 +143,8 @@ if model is not None:
                     st.warning("Could not calculate probability scores")
             except Exception as e:
                 st.error(f"Prediction failed: {str(e)}")
-                # Debug: Show the exact data being sent
+                # Debug information
+                st.write("Features being sent to model:", features)
                 st.write("Data sent to model:", df)
                 st.write("Data types:", df.dtypes)
 
