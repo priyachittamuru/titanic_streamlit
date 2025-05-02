@@ -79,7 +79,7 @@ if model is not None:
             with middle:
                 sibsp = st.number_input("Siblings/Spouses Aboard", 0, 10, 0)
                 parch = st.number_input("Parents/Children Aboard", 0, 10, 0)
-                fare = st.number_input("Fare", 0.0, 600.0, 32.0, step=1.0, help="Ticket fare in British pounds")
+                fare = st.number_input("fare", 0.0, 600.0, 32.0, step=1.0, help="Ticket fare in British pounds")
                 
             with right:
                 embarked = st.selectbox("Embarked_", ["C", "Q", "S"], index=2)
