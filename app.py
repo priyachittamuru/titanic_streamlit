@@ -41,15 +41,15 @@ with col2:
 # Preprocess inputs
 is_alone = 1 if family_size == 0 else 0
 
-# Create bins for Age and Fare (these should match your model's training)
-age_bin = 0  # Replace with actual binning logic
-fare_bin = 0  # Replace with actual binning logic
+# Simple binning logic (replace with your actual binning if different)
+age_bin = np.digitize(age, bins=[0, 12, 18, 30, 50, 100]) - 1  # Creates bins 0-4
+fare_bin = np.digitize(fare, bins=[0, 10, 20, 50, 100, 600]) - 1  # Creates bins 0-4
 
-# Create feature vector in the same order as the model expects
+# Create feature vectors
 embarked_features = {
-    'C': [1, 0, 0],
-    'Q': [0, 1, 0],
-    'S': [0, 0, 1]
+    'C': [0, 1, 0, 0],  # [Embarked_, Embarked_C, Embarked_Q, Embarked_S]
+    'Q': [0, 0, 1, 0],
+    'S': [0, 0, 0, 1]
 }
 
 title_features = {
@@ -62,21 +62,23 @@ title_features = {
 
 # Button to predict
 if st.button("Predict Survival"):
-    # Create input array in the exact order the model expects
+    # Create input array with EXACTLY 17 features in correct order:
     input_data = np.array([[
-        pclass,
-        0 if sex == "male" else 1,
-        age,
-        family_size,
-        has_cabin,
-        is_alone,
-        age_bin,  # AgeBin
-        fare_bin,  # FareBin
-        *embarked_features[embarked],
-        *title_features[title]
+        pclass,                     # 1. Pclass
+        0 if sex == "male" else 1,  # 2. Sex
+        age,                        # 3. Age
+        family_size,                # 4. FamilySize
+        has_cabin,                  # 5. HasCabin
+        is_alone,                   # 6. IsAlone
+        age_bin,                    # 7. AgeBin
+        fare_bin,                   # 8. FareBin
+        *embarked_features[embarked],  # 9-12. Embarked_, Embarked_C, Embarked_Q, Embarked_S
+        *title_features[title]      # 13-17. Title_Master, Title_Miss, Title_Mr, Title_Mrs, Title_Rare
     ]])
     
-    # Prediction
+    # Debug output (can be removed after verification)
+    st.write(f"Input shape: {input_data.shape} (should be (1, 17))")
+    
     try:
         prediction = model.predict(input_data)[0]
         probability = model.predict_proba(input_data)[0][1]
@@ -86,12 +88,31 @@ if st.button("Predict Survival"):
             st.balloons()
         else:
             st.error(f"❌ Did not survive (Probability: {probability:.2%})")
+            
+        # Show feature importance (if available)
+        try:
+            if hasattr(model, 'coef_'):
+                st.subheader("Feature Importance")
+                features = [
+                    'Pclass', 'Sex', 'Age', 'FamilySize', 'HasCabin', 'IsAlone', 'AgeBin', 'FareBin',
+                    'Embarked_', 'Embarked_C', 'Embarked_Q', 'Embarked_S',
+                    'Title_Master', 'Title_Miss', 'Title_Mr', 'Title_Mrs', 'Title_Rare'
+                ]
+                importance = pd.DataFrame({
+                    'Feature': features,
+                    'Importance': model.coef_[0]
+                }).sort_values('Importance', ascending=False)
+                st.dataframe(importance)
+        except:
+            pass
+            
     except Exception as e:
         st.error(f"Error making prediction: {str(e)}")
+        st.error("Please check that all input values are valid")
 
 # Add some footer information
 st.markdown("---")
 st.markdown("""
 **Note:** This prediction is based on a machine learning model trained on historical Titanic passenger data.
-The actual outcome might have been different due to various unpredictable factors.
+Actual outcomes might have varied due to unpredictable circumstances.
 """)
