@@ -17,7 +17,7 @@ st.write("⚓ This app predicts whether a passenger would have survived the Tita
 try:
     response = requests.get('https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/RMS_Titanic_3.jpg/800px-RMS_Titanic_3.jpg')
     titanic_image = Image.open(BytesIO(response.content))
-    st.image(titanic_image, caption='RMS Titanic (1912)', use_column_width=True)
+    st.image(titanic_image, caption='RMS Titanic (1912)', use_container_width=True)
 except:
     st.warning("Couldn't load the Titanic image, proceeding without it")
 
@@ -40,6 +40,10 @@ with col2:
 
 # Preprocess inputs
 is_alone = 1 if family_size == 0 else 0
+
+# Create bins for Age and Fare (these should match your model's training)
+age_bin = 0  # Replace with actual binning logic
+fare_bin = 0  # Replace with actual binning logic
 
 # Create feature vector in the same order as the model expects
 embarked_features = {
@@ -66,21 +70,24 @@ if st.button("Predict Survival"):
         family_size,
         has_cabin,
         is_alone,
-        0,  # AgeBin - would need calculation in a real app
-        0,  # FareBin - would need calculation in a real app
+        age_bin,  # AgeBin
+        fare_bin,  # FareBin
         *embarked_features[embarked],
         *title_features[title]
     ]])
     
     # Prediction
-    prediction = model.predict(input_data)[0]
-    probability = model.predict_proba(input_data)[0][1]
+    try:
+        prediction = model.predict(input_data)[0]
+        probability = model.predict_proba(input_data)[0][1]
 
-    if prediction == 1:
-        st.success(f"✅ Survived (Probability: {probability:.2%})")
-        st.balloons()
-    else:
-        st.error(f"❌ Did not survive (Probability: {probability:.2%})")
+        if prediction == 1:
+            st.success(f"✅ Survived (Probability: {probability:.2%})")
+            st.balloons()
+        else:
+            st.error(f"❌ Did not survive (Probability: {probability:.2%})")
+    except Exception as e:
+        st.error(f"Error making prediction: {str(e)}")
 
 # Add some footer information
 st.markdown("---")
